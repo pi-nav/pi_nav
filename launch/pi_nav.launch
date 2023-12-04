@@ -1,0 +1,54 @@
+<?xml version="1.0"?>
+<launch>
+    <!-- ttyTHS1 for NVIDIA nano serial port-->
+    <!-- ttyUSB0 for USB serial port -->
+    <arg name="port_name" default="ttyTHS1" />
+    <arg name="odom_frame" default="odom" />
+    <arg name="base_frame" default="base_link" />
+    <arg name="use_mcnamu" default="false" />
+    <arg name="pub_odom_tf" default="" />
+    <arg name="robot_num" default="1" />
+
+    <node name="limo_base_node" pkg="limo_base" type="limo_base_node" output="screen" >
+        <param name="port_name" value="$(arg port_name)" />
+        <param name="odom_frame" value="$(arg odom_frame)" />
+        <param name="base_frame" value="$(arg base_frame)" />
+        <param name="use_mcnamu" value="$(arg use_mcnamu)" />
+        <param name="pub_odom_tf" value="$(arg pub_odom_tf)" />
+
+        <!-- Remap topics with robot number -->
+        <remap from="cmd_vel" to="robot_$(arg robot_num)_vel" />
+        <remap from="imu" to="robot_$(arg robot_num)_imu" />
+        <remap from="limo_status" to="robot_$(arg robot_num)_status" />
+        <remap from="odom" to="robot_$(arg robot_num)_odom" />
+        <remap from="tf" to="robot_$(arg robot_num)_tf" />
+    </node>
+
+    <!-- Contents from the amcl file -->
+    <!-- Include YDLidar ROS Node -->
+    <include file="$(find ydlidar_ros)/launch/X2L.launch" />
+
+    <!-- Static Transform Publishers -->
+    <node pkg="tf" type="static_transform_publisher" name="base_link_to_camera_link" args="0.105 0 0.1 0.0 0.0 0.0 /base_link /camera_link 10" />
+    <node pkg="tf" type="static_transform_publisher" name="base_link_to_imu_link" args="0.0 0.0 0.0 0.0 0.0 0.0 /base_link /imu_link 10" /> 
+    <node pkg="tf" type="static_transform_publisher" name="base_link_to_laser_link" args="0.105 0.0 0.08 0.0 0.0 0.0 /base_link /laser_link 10" />
+
+    <!-- Use robot pose ekf to provide odometry -->
+    <node pkg="robot_pose_ekf" name="robot_pose_ekf" type="robot_pose_ekf">
+        <param name="output_frame" value="odom" />
+        <param name="base_footprint_frame" value="base_link"/>
+        <remap from="imu_data" to="imu" />
+    </node>
+
+    <node pkg="amcl" type="amcl" name="amcl" output="screen">
+        <rosparam file="$(find limo_bringup)/param/amcl_params_diff.yaml" command="load" />
+        <param name="initial_pose_x" value="1.19115722241"/>
+        <param name="initial_pose_y" value="-1.05435373403"/>
+        <param name="initial_pose_a" value="1.7"/>
+    </node>
+
+    <!-- Map Server -->
+    <node pkg="map_server" type="map_server" name="map_server" args="$(find limo_bringup)/maps/test_map_Nov15.pbstream.yaml" output="screen" >
+        <param name="frame_id" value="map"/>
+    </node>
+</launch>
