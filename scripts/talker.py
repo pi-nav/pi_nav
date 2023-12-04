@@ -1,34 +1,25 @@
 #!/usr/bin/env python
 import rospy
-from geometry_msgs.msg import Twist, Vector3
+from std_msgs.msg import String  # Import the String message type for emergency_stop
 
-def publish_forward_command():
+def publish_stop_command():
     # Initialize the node
-    rospy.init_node('move_robots_forward', anonymous=True)
+    rospy.init_node('emergency_stop_publisher', anonymous=True)
 
-    # ADD PUBLISHERS FOR ALL THE ROBOTS HERE
-    robot_1_pub = rospy.Publisher('robot_1_vel', Twist, queue_size=10)
-    robot_2_pub = rospy.Publisher('robot_2_vel', Twist, queue_size=10)
+    # Publisher for the emergency_stop topic
+    emergency_stop_pub = rospy.Publisher('emergency_stop', String, queue_size=10)
 
-    # Wait for the publisher to establish a connection to the topic
-    rospy.sleep(1)
+    # Wait for 3 seconds
+    rospy.sleep(3)
 
-    # Create a Twist message for forward movement
-    forward_command = Twist()
-    forward_command.linear = Vector3(0.15, 0, 0)  # Set linear velocity (forward)
-    forward_command.angular = Vector3(0, 0, 0)   # Set angular velocity to zero
-
-    # Publish the command
-    robot_1_pub.publish(forward_command)
-    robot_2_pub.publish(forward_command)
-    rospy.loginfo("robot_1_vel")
-    rospy.loginfo("robot_2_vel")
-
-    # Wait for a short time to ensure the message is sent
-    rospy.sleep(1)
+    # Publish "STOP" message to the emergency_stop topic
+    stop_command = String()
+    stop_command.data = "STOP"
+    emergency_stop_pub.publish(stop_command)
+    rospy.loginfo("Published STOP command to emergency_stop")
 
 if __name__ == '__main__':
     try:
-        publish_forward_command()
+        publish_stop_command()
     except rospy.ROSInterruptException:
         pass
