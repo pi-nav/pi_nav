@@ -43,27 +43,78 @@
     </node>
 
     <!-- Static Transform Publishers -->
-    <node pkg="tf" type="static_transform_publisher" name="base_link_to_camera_link" args="0.105 0 0.1 0.0 0.0 0.0 /base_link /camera_link 10" />
-    <node pkg="tf" type="static_transform_publisher" name="base_link_to_imu_link" args="0.0 0.0 0.0 0.0 0.0 0.0 /base_link /imu_link 10" /> 
-    <node pkg="tf" type="static_transform_publisher" name="base_link_to_laser_link" args="0.105 0.0 0.08 0.0 0.0 0.0 /base_link /laser_link 10" />
+    <node pkg="tf" type="static_transform_publisher" name="base_link_to_camera_link" args="0.105 0 0.1 0.0 0.0 0.0 /base_link /camera_link 10" >
+        <remap from="tf" to="robot_$(arg robot_num)_tf" />
+    </node>
+
+    <node pkg="tf" type="static_transform_publisher" name="base_link_to_imu_link" args="0.0 0.0 0.0 0.0 0.0 0.0 /base_link /imu_link 10" >
+        <remap from="tf" to="robot_$(arg robot_num)_tf" />
+    </node> 
+
+    <node pkg="tf" type="static_transform_publisher" name="base_link_to_laser_link" args="0.105 0.0 0.08 0.0 0.0 0.0 /base_link /laser_link 10" >
+        <remap from="tf" to="robot_$(arg robot_num)_tf" />
+    </node>
 
 	 <!-- use robot pose ekf to provide odometry-->
     <node pkg="robot_pose_ekf" name="robot_pose_ekf" type="robot_pose_ekf">
-        <param name="output_frame" value="odom" />
+        <param name="output_frame" value="robot_$(arg robot_num)_odom" />
         <param name="base_footprint_frame" value="base_link"/>
-        <remap from="imu_data" to="imu" />
-    </node>
+        <param name="imu_used" value="false"/>
+        <param name="vo_used" value="false"/>
 
+        <remap from="odom" to="robot_$(arg robot_num)_odom" />
+        <remap from="imu_data" to="robot_$(arg robot_num)_imu" />
+        <remap from="tf" to="robot_$(arg robot_num)_tf" />
+        <remap from="tf_static" to="robot_$(arg robot_num)_tf_static" />
+    </node>
 
     <node pkg="amcl" type="amcl" name="amcl" output="screen">
         <rosparam file="$(find limo_bringup)/param/amcl_params_diff.yaml" command="load" />
-		<param name="initial_pose_x"            value="1.19115722241"/>
-		<param name="initial_pose_y"            value="-1.05435373403"/>
-		<param name="initial_pose_a"            value="1.7"/>
-	</node>      
+        <param name="initial_pose_x" value="1.19115722241"/>
+        <param name="initial_pose_y" value="-1.05435373403"/>
+        <param name="initial_pose_a" value="1.7"/>
+    
+        <param name="use_map_topic" value="true" />
+        <param name="odom_frame_id" value="robot_$(arg robot_num)_odom" />
+        <param name="base_frame_id" value="base_link" />
+        <param name="global_frame_id" value="map" />
+        <param name="odom_model_type" value="diff" />
+        <param name="odom_alpha5" value="0.1" />
+        <param name="gui_publish_rate" value="10.0" />
+        <param name="laser_max_beams" value="60" />
+        <param name="laser_max_range" value="60.0" />
+        <param name="min_particles" value="500" />
+        <param name="max_particles" value="2000" />
+        <param name="kld_err" value="0.05" />
+        <param name="kld_z" value="0.99" />
+        <param name="odom_alpha1" value="0.2" />
+        <param name="odom_alpha2" value="0.2" />
+        <param name="odom_alpha3" value="0.1" />
+        <param name="odom_alpha4" value="0.2" />
+        <param name="laser_z_hit" value="0.5" />
+        <param name="laser_z_short" value="0.05" />
+        <param name="laser_z_max" value="0.05" />
+        <param name="laser_z_rand" value="0.5" />
+        <param name="laser_sigma_hit" value="0.2" />
+        <param name="laser_lambda_short" value="0.1" />
+        <param name="laser_model_type" value="likelihood_field" />
+        <param name="laser_likelihood_max_dist" value="2.0" />
+        <param name="update_min_d" value="0.25" />
+        <param name="update_min_a" value="0.5" />
+        <param name="resample_interval" value="1" />
+        <param name="transform_tolerance" value="0.2" />
+        <param name="recovery_alpha_slow" value="0.0" />
+        <param name="recovery_alpha_fast" value="0.0" />
+
+        <remap from="tf" to="robot_$(arg robot_num)_tf" />
+        <remap from="tf_static" to="robot_$(arg robot_num)_tf_static" />
+        <remap from="amcl/parameter_descriptions" to="robot_$(arg robot_num)_amcl/parameter_descriptions" />
+        <remap from="amcl/parameter_updates" to="robot_$(arg robot_num)_amcl/parameter_updates" />
+        <remap from="amcl_pose" to="robot_$(arg robot_num)_amcl_pose" />
+    </node>
 
     <!--  ************** map server ***************  -->
-    <!-- <node pkg="map_server" type="map_server" name="map_server" args="$(find limo_bringup)/maps/test_map_Nov15.pbstream.yaml" output="screen" >
+    <node pkg="map_server" type="map_server" name="map_server" args="$(find limo_bringup)/maps/test_map_Nov15.pbstream.yaml" output="screen" >
         <param name="frame_id" value="map"/>
-    </node> -->
+    </node>
 </launch>
