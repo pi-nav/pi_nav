@@ -14,28 +14,16 @@ detect = .4
 
 class RobotController:
     def __init__(self, coord, global_coord):
-        # CHANGE THESE TOPIC NAMES
-        # self.sub_cmd_vel = rospy.Subscriber('robot_1_vel', Twist, self.cmd_vel_callback)
-        # self.sub_odom = rospy.Subscriber("/odom", Odometry, self.odom_callback)
-        # self.sub_amcl = rospy.Subscriber("/amcl_pose", PoseWithCovarianceStamped, self.amcl_callback)
-        # self.sub_emergency_stop = rospy.Subscriber('emergency_stop', String, self.emergency_stop_callback)
-
-        # self.pub = rospy.Publisher('robot_1_vel', Twist, queue_size=10)
-
         self.sub_odom = rospy.Subscriber("robot_2_odom", Odometry, self.odom_callback)
         self.sub_amcl = rospy.Subscriber("robot_2_amcl_pose", PoseWithCovarianceStamped, self.amcl_callback)
         self.sub_emergency_stop = rospy.Subscriber('emergency_stop', Bool, self.emergency_stop_callback)
-
         self.pub = rospy.Publisher('robot_2_vel', Twist, queue_size=10)
-        # self.pub_stop = rospy.Publisher('emergency_stop', Bool, queue_size=10)
 
         self.pos = None
         self.amcl_pos = None
         self.speed_x = 0.15
         self.hz = 2
         self.stop = False
-
-
         self.center = center
         self.detect = detect
         self.coord = coord
@@ -55,7 +43,7 @@ class RobotController:
             print("Emergency Stop Activated")
         if msg.data == False:
             self.stop = False
-            print("Robot Continues")
+            # print("Robot Continues")
 
     def get_pos(self):
         if self.pos is not None:
@@ -85,11 +73,6 @@ class RobotController:
             int_msg.data = True
         else:
             int_msg.data = False
-
-        rospy.loginfo("Intersection Occupied: %s" % int_msg.data)
-
-        # Publish the message
-        # self.pub_stop.publish(int_msg)
 
     def drive_adjust(self, pid_output):
         if not self.stop:
@@ -157,8 +140,6 @@ class RobotController:
         self.pub.publish(twist)
         print('Robot stopped.')
 
-
-
 def calc_cte(start_point, end_point, robot_position):
     x1, y1 = start_point
     x2, y2 = end_point
@@ -185,7 +166,6 @@ def calc_cte(start_point, end_point, robot_position):
     print('Error from Path: {}'.format(signed_cte))
     return signed_cte
 
-
 if __name__ == '__main__':
     # CHANGE THE NODE NAME
     rospy.init_node('robot_controller_node_2')
@@ -193,7 +173,6 @@ if __name__ == '__main__':
     rospy.sleep(1)
     controller.stop_robot()
     rospy.sleep(1)
-
     controller.pid_test(coord[0], coord[1])
 
 

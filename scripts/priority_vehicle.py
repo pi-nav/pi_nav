@@ -14,29 +14,16 @@ detect = .4
 
 class RobotController:
     def __init__(self, coord, global_coord):
-        # CHANGE THESE TOPIC NAMES
-        # self.sub_cmd_vel = rospy.Subscriber('robot_1_vel', Twist, self.cmd_vel_callback)
-        # self.sub_odom = rospy.Subscriber("/odom", Odometry, self.odom_callback)
-        # self.sub_amcl = rospy.Subscriber("/amcl_pose", PoseWithCovarianceStamped, self.amcl_callback)
-        # self.sub_emergency_stop = rospy.Subscriber('emergency_stop', String, self.emergency_stop_callback)
-
-        # self.pub = rospy.Publisher('robot_1_vel', Twist, queue_size=10)
-
         self.sub_odom = rospy.Subscriber("robot_1_odom", Odometry, self.odom_callback)
         self.sub_amcl = rospy.Subscriber("robot_1_amcl_pose", PoseWithCovarianceStamped, self.amcl_callback)
-        # self.sub_emergency_stop = rospy.Subscriber('emergency_stop', Bool, self.emergency_stop_callback)
-
         self.pub = rospy.Publisher('robot_1_vel', Twist, queue_size=10)
         self.pub_e_stop = rospy.Publisher('emergency_stop', Bool, queue_size=10)
-        # self.pub_stop = rospy.Publisher('int_stop', Bool, queue_size=10)
-
 
         self.pos = None
         self.amcl_pos = None
         self.speed_x = 0.15
         self.hz = 10
         self.stop = False
-
 
         self.center = center
         self.detect = detect
@@ -48,14 +35,6 @@ class RobotController:
 
     def amcl_callback(self, msg):
         self.amcl_pos = msg.pose.pose.position
-
-    def emergency_stop_callback(self, msg):
-        # if msg.data == "STOP":
-        #     self.stop = True
-        #     self.stop_robot()
-        #     print("Emergency Stop Activated")
-        # print("Emergency Stop Activated")
-        pass
 
     def get_pos(self):
         if self.pos is not None:
@@ -82,18 +61,10 @@ class RobotController:
         else:
             int_msg.data = False
 
-
-        rospy.loginfo("Intersection Occupied: %s" % int_msg.data)
-
-        # Publish the message
+        rospy.loginfo("Priority vehicle in intersection: %s" % int_msg.data)
         self.pub_e_stop.publish(int_msg)
-        
-
-
-
 
     def drive_adjust(self, pid_output):
-
         if not self.stop:
             if pid_output > 3:
                 input = 3
@@ -119,7 +90,7 @@ class RobotController:
 
         rate = rospy.Rate(self.hz)
 
-        while not rospy.is_shutdown(): #and not self.stop:
+        while not rospy.is_shutdown():
             current_pos = self.get_pos()
             amcl_pos = self.get_amcl_pos()
             # print('Robot Position: {} '.format(current_pos))
@@ -134,7 +105,6 @@ class RobotController:
                 print("Goal reached, stopping robot.")
                 self.stop_robot()
                 break 
-
 
             error = calc_cte(start_pos, end_pos, current_pos) 
             error_sum += error / self.hz
@@ -158,8 +128,6 @@ class RobotController:
         twist.angular = Vector3(0, 0, 0)
         self.pub.publish(twist)
         print('Robot stopped.')
-
-
 
 def calc_cte(start_point, end_point, robot_position):
     x1, y1 = start_point
@@ -187,7 +155,6 @@ def calc_cte(start_point, end_point, robot_position):
     print('Error from Path: {}'.format(signed_cte))
     return signed_cte
 
-
 if __name__ == '__main__':
     # CHANGE THE NODE NAME
     rospy.init_node('robot_controller_node1')
@@ -195,7 +162,4 @@ if __name__ == '__main__':
     rospy.sleep(1)
     controller.stop_robot()
     rospy.sleep(1)
-
-
     controller.pid_test(coord[0], coord[1])
-
