@@ -61,6 +61,8 @@
         <param name="base_footprint_frame" value="base_link"/>
         <param name="imu_used" value="false"/>
         <param name="vo_used" value="false"/>
+        <param name="default_transform" value="0 0 0 0 0 0 1"/>
+
 
         <remap from="odom" to="robot_$(arg robot_num)_odom" />
         <remap from="imu_data" to="robot_$(arg robot_num)_imu" />
@@ -69,7 +71,6 @@
     </node>
 
     <node pkg="amcl" type="amcl" name="robot_$(arg robot_num)_amcl" output="screen">
-        <rosparam file="$(find limo_bringup)/param/amcl_params_diff.yaml" command="load" />
         <param name="initial_pose_x" value="1.19115722241"/>
         <param name="initial_pose_y" value="-1.05435373403"/>
         <param name="initial_pose_a" value="1.7"/>
