@@ -71,9 +71,9 @@
     </node>
 
     <node pkg="amcl" type="amcl" name="robot_$(arg robot_num)_amcl" output="screen">
-        <param name="initial_pose_x" value="1.19115722241"/>
-        <param name="initial_pose_y" value="-1.05435373403"/>
-        <param name="initial_pose_a" value="1.7"/>
+        <param name="initial_pose_x" value="0.05"/>
+        <param name="initial_pose_y" value="-0.13"/>
+        <param name="initial_pose_a" value="0"/>
     
         <param name="use_map_topic" value="true" />
         <param name="odom_frame_id" value="robot_$(arg robot_num)_odom" />
@@ -117,7 +117,7 @@
     </node>
 
     <!--  ************** map server ***************  -->
-    <node pkg="map_server" type="map_server" name="robot_$(arg robot_num)_map_server" args="$(find limo_bringup)/maps/test_map_Nov15.pbstream.yaml" output="screen" >
+    <!-- <node pkg="map_server" type="map_server" name="robot_$(arg robot_num)_map_server" args="$(find limo_bringup)/maps/test_map_Nov15.pbstream.yaml" output="screen" >
         <param name="frame_id" value="map"/>
-    </node>
+    </node> -->
 </launch>

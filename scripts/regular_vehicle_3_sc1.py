@@ -6,18 +6,19 @@ from nav_msgs.msg import Odometry
 from geometry_msgs.msg import Twist, Vector3, PoseWithCovarianceStamped
 from std_msgs.msg import String, Bool
 
-coord = [[0,0], [3, .05]]
-global_coord = [[0, 0] , [2.8, 0]]
+# coord = [[0,0], [3, 0.5]]
+coord = [[0,0], [3, -.2]]
+global_coord = [[2.8, 0.13] , [0.05, 0.13]]
 
 center = [1.05, 0]
 detect = .4
 
 class RobotController:
     def __init__(self, coord, global_coord):
-        self.sub_odom = rospy.Subscriber("robot_2_odom", Odometry, self.odom_callback)
-        self.sub_amcl = rospy.Subscriber("robot_2_amcl_pose", PoseWithCovarianceStamped, self.amcl_callback)
+        self.sub_odom = rospy.Subscriber("robot_3_odom", Odometry, self.odom_callback)
+        self.sub_amcl = rospy.Subscriber("robot_3_amcl_pose", PoseWithCovarianceStamped, self.amcl_callback)
         self.sub_emergency_stop = rospy.Subscriber('emergency_stop', Bool, self.emergency_stop_callback)
-        self.pub = rospy.Publisher('robot_2_vel', Twist, queue_size=10)
+        self.pub = rospy.Publisher('robot_3_vel', Twist, queue_size=10)
 
         self.pos = None
         self.amcl_pos = None
@@ -38,12 +39,12 @@ class RobotController:
     def emergency_stop_callback(self, msg):
         if msg.data == True:
             self.stop = True
-            self.reset_pid()
+            # self.reset_pid()
             self.stop_robot()
             print("Emergency Stop Activated")
         if msg.data == False:
             self.stop = False
-            # print("Robot Continues")
+            print("Robot Continues")
 
     def get_pos(self):
         if self.pos is not None:
@@ -168,11 +169,11 @@ def calc_cte(start_point, end_point, robot_position):
 
 if __name__ == '__main__':
     # CHANGE THE NODE NAME
-    rospy.init_node('robot_controller_node_2')
+    rospy.init_node('robot_controller_node_3')
     controller = RobotController(coord, global_coord)
     rospy.sleep(1)
     controller.stop_robot()
-    rospy.sleep(1)
+    rospy.sleep(0.5)
     controller.pid_test(coord[0], coord[1])
 
 
