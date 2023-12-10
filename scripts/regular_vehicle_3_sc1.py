@@ -6,14 +6,37 @@ from nav_msgs.msg import Odometry
 from geometry_msgs.msg import Twist, Vector3, PoseWithCovarianceStamped
 from std_msgs.msg import String, Bool
 
-# coord = [[0,0], [3, 0.5]]
+#Initial position also set in launch file.
 coord = [[0,0], [3, -.2]]
 global_coord = [[2.8, 0.13] , [0.05, 0.13]]
 
+#Intersection Center is offset to improve on late intersection exit detection. 
 center = [1.05, 0]
 detect = .4
 
 class RobotController:
+    """
+        Robot Controller for priority vehicle, subscribes to odometry and pose topics to get local and global positions.
+        Publishes to robot#_vel for low level motor commands.
+        
+        For stop handling, publishes position status to emergency_stop topic. Other robots subscribe
+        to this topic to give way to priority vehicle
+
+        Attributes:
+            sub_odom: Subscriber for robot odometry.
+            sub_amcl: Subscriber for robot's global pose. Initial pose is set in launch file.
+            pub_vel: Publisher for robot's velocity commands.
+            sub_emergency_stop: Subscriber for stop signals.
+            pos: Local position of the robot.
+            amcl_pos: Global position of the robot.
+            speed_x: Linear speed of the robot.
+            hz: Frequency of the control loop.
+            stop: Flag to stop the robot.
+            center: Coordinates of an intersection center.
+            detect: Detection threshold for intersection.
+            coord: Local coordinates for the robot.
+            global_coord: Global coordinates for the robot.
+    """
     def __init__(self, coord, global_coord):
         self.sub_odom = rospy.Subscriber("robot_3_odom", Odometry, self.odom_callback)
         self.sub_amcl = rospy.Subscriber("robot_3_amcl_pose", PoseWithCovarianceStamped, self.amcl_callback)
@@ -25,18 +48,30 @@ class RobotController:
         self.speed_x = 0.15
         self.hz = 2
         self.stop = False
+
         self.center = center
         self.detect = detect
         self.coord = coord
         self.global_coord = global_coord
 
     def odom_callback(self, msg):
+        '''
+            Callback function for robot odometry subscriber.
+        '''
         self.pos = msg.pose.pose.position
 
     def amcl_callback(self, msg):
+        '''
+            Callback function for robot AMCL pose subscriber.
+        '''
         self.amcl_pos = msg.pose.pose.position
 
     def emergency_stop_callback(self, msg):
+        '''
+            Callback function for emergency_stop subscriber. Waits for priority vehicle
+            to output whether it is crossing the intersection.
+        '''
+
         if msg.data == True:
             self.stop = True
             # self.reset_pid()
@@ -47,6 +82,10 @@ class RobotController:
             print("Robot Continues")
 
     def get_pos(self):
+        '''
+            Retrieve robot local coordinates. Returns starting point if /robot_#_odom is not
+            responding properly.
+        '''       
         if self.pos is not None:
             # print('Current Position: {}, {}'.format(self.pos.x, self.pos.y))
             return [self.pos.x, self.pos.y]
@@ -55,6 +94,10 @@ class RobotController:
             return self.coord[0]
 
     def get_amcl_pos(self):
+        '''
+            Retrieve robot global coordinates. Returns starting point if /robot_#_amcl_pose is not
+            responding properly.
+        '''
         if self.amcl_pos is not None:
             print('Global Position: {}, {}'.format(self.amcl_pos.x, self.amcl_pos.y))
             return [self.amcl_pos.x, self.amcl_pos.y]
@@ -63,10 +106,17 @@ class RobotController:
             return self.global_coord[0]
 
     def reset_pid(self):
+        '''
+            Resets PID error.
+        '''
         self.error_sum = 0
         self.error_prev = 0
 
     def int_crossing(self):
+        '''
+            Sets bounding square with side length detect around intersection center. Publishes True to
+            emergency_stop if priority vehicle is in the intersection.
+        '''
         pos = self.get_pos()
         int_msg = Bool()
         if abs(self.center[0] - pos[0]) < self.detect and abs(self.center[1] - pos[1]) < self.detect:
@@ -76,6 +126,13 @@ class RobotController:
             int_msg.data = False
 
     def drive_adjust(self, pid_output):
+        '''
+            Publishes motor commands from PID controller to robot_#_vel topic. PID output will always be
+            small angular velocities to correct robot path. 
+
+            Parameters:
+                pid_output: PID output, correcting angular velocities
+        '''
         if not self.stop:
             if pid_output > 3:
                 input = 3
@@ -91,9 +148,23 @@ class RobotController:
             self.pub.publish(twist)
 
     def pid_test(self, start_pos, end_pos):
-        Kp = .2  # Proportional gain
-        Ki = .01  # Integral gain
-        Kd = 1  # Derivative gain
+        '''
+            PID controller. Corrects error from path by outputting small angular velocities. 
+
+            Parameters to tune that affect PID performance:
+                Kp: Proportional gain
+                Ki: Integral gain
+                Kd: Derivative gain
+                self.hz: Loop Frequency
+                self.x_speed: Motor forward speed
+
+            Inputs:
+                start_pos: Starting point in global frame
+                end_pos: End point in global frame
+        '''
+        Kp = .2  # Fixes current error
+        Ki = .01  # Fixes steady state error
+        Kd = 1  # Predicts and fixes future error
 
         error_sum = 0
         error_prev = 0
@@ -105,19 +176,19 @@ class RobotController:
             if not self.stop:
                 current_pos = self.get_pos()
                 amcl_pos = self.get_amcl_pos()
-                # print('Robot Position: {} '.format(current_pos))
-                # print(self.stop)
 
+                #Stops if /odom or /amcl_pose are not working
                 if current_pos[0] is None or amcl_pos[0] is None:
                     rate.sleep()
                     continue
 
-                # if math.hypot(end_pos[0] - current_pos[0], end_pos[1] - current_pos[1]) < goal_threshold:
+                #Robot has reached final goal
                 if math.hypot(global_coord[1][0] - amcl_pos[0], global_coord[1][1] - amcl_pos[1]) < goal_threshold:
                     print("Goal reached, stopping robot.")
                     self.stop_robot()
                     break 
 
+                #Actual PID math
                 error = calc_cte(start_pos, end_pos, current_pos) 
                 error_sum += error / self.hz
                 error_diff = (error - error_prev) * self.hz
@@ -128,6 +199,7 @@ class RobotController:
             # if not self.stop:
                 self.drive_adjust(output)
                 self.int_crossing()
+            #Check for stop signal from emergency_stop
             else:
                 self.stop_robot()
                 # continue
@@ -135,6 +207,9 @@ class RobotController:
             rate.sleep()
 
     def stop_robot(self):
+        '''
+            Stops robot.
+        '''
         twist = Twist()
         twist.linear = Vector3(0, 0, 0)
         twist.angular = Vector3(0, 0, 0)
@@ -142,6 +217,19 @@ class RobotController:
         print('Robot stopped.')
 
 def calc_cte(start_point, end_point, robot_position):
+    '''
+        Calculate cross track error for PID Controller. Finds equation of line composed from start_point
+        and end_point. Calculates signed perpendicular distance of robot_position, represented as a point, 
+        to this path. Negative error is on "right" of path, positive error is on "left".
+
+        Parameters:
+            start_point: Global coordinates of robot start
+            end_point: Global coordaintes of robot goal
+            robot_position: Robot current position in global coordinates given by /amcl_pose
+
+        Returns:
+            signed_cte: Calculated Cross track error, signed according to path side.
+    '''
     x1, y1 = start_point
     x2, y2 = end_point
     x, y = robot_position
