@@ -16,11 +16,8 @@ detect = .4
 
 class RobotController:
     """
-        Robot Controller for priority vehicle, subscribes to odometry and pose topics to get local and global positions.
-        Publishes to robot#_vel for low level motor commands.
-        
-        For stop handling, publishes position status to emergency_stop topic. Other robots subscribe
-        to this topic to give way to priority vehicle
+        Robot Controller for regular vehicle, subscribes to odometry and pose topics to get local and global positions.
+        Publishes to robot#_vel for low level motor commands. Subscribes to emergency_stop for stop commands
 
         Attributes:
             sub_odom: Subscriber for robot odometry.
@@ -74,12 +71,10 @@ class RobotController:
 
         if msg.data == True:
             self.stop = True
-            # self.reset_pid()
             self.stop_robot()
             print("Emergency Stop Activated")
         if msg.data == False:
             self.stop = False
-            print("Robot Continues")
 
     def get_pos(self):
         '''
@@ -87,7 +82,6 @@ class RobotController:
             responding properly.
         '''       
         if self.pos is not None:
-            # print('Current Position: {}, {}'.format(self.pos.x, self.pos.y))
             return [self.pos.x, self.pos.y]
         else:
             print('Local Position Not Set')
@@ -111,19 +105,6 @@ class RobotController:
         '''
         self.error_sum = 0
         self.error_prev = 0
-
-    def int_crossing(self):
-        '''
-            Sets bounding square with side length detect around intersection center. Publishes True to
-            emergency_stop if priority vehicle is in the intersection.
-        '''
-        pos = self.get_pos()
-        int_msg = Bool()
-        if abs(self.center[0] - pos[0]) < self.detect and abs(self.center[1] - pos[1]) < self.detect:
-            # print('*******IN THE INTERSECTION*********')
-            int_msg.data = True
-        else:
-            int_msg.data = False
 
     def drive_adjust(self, pid_output):
         '''
@@ -196,13 +177,9 @@ class RobotController:
 
                 output = Kp * error + Ki * error_sum + Kd * error_diff
                 
-            # if not self.stop:
                 self.drive_adjust(output)
-                self.int_crossing()
-            #Check for stop signal from emergency_stop
             else:
                 self.stop_robot()
-                # continue
 
             rate.sleep()
 
@@ -256,7 +233,6 @@ def calc_cte(start_point, end_point, robot_position):
     return signed_cte
 
 if __name__ == '__main__':
-    # CHANGE THE NODE NAME
     rospy.init_node('robot_controller_node_3')
     controller = RobotController(coord, global_coord)
     rospy.sleep(1)

@@ -16,14 +16,16 @@ detect = .4
 
 class RobotController:
     """
-        Robot Controller for regular vehicle, subscribes to odometry and pose topics to get local and global positions.
-        Publishes to robot#_vel for low level motor commands. Subscribes to emergency_stop for stop commands.
+        Robot Controller for priority vehicle, subscribes to odometry and pose topics to get local and global positions.
+        Publishes to robot#_vel for low level motor commands. Subscribes to emergency_stop and regular_stop for stop commands.
 
         Attributes:
             sub_odom: Subscriber for robot odometry.
             sub_amcl: Subscriber for robot's global pose. Initial pose is set in launch file.
             pub_vel: Publisher for robot's velocity commands.
             sub_emergency_stop: Subscriber for stop signals.
+            pub_regular_stop: publisher for regular vehicle stop signals
+            sub_regular_stop: subscriber for regular vehicle stop signals
             pos: Local position of the robot.
             amcl_pos: Global position of the robot.
             speed_x: Linear speed of the robot.
@@ -40,6 +42,9 @@ class RobotController:
         self.sub_emergency_stop = rospy.Subscriber('emergency_stop', Bool, self.emergency_stop_callback)
 
         self.pub = rospy.Publisher('robot_2_vel', Twist, queue_size=10)
+
+        self.pub_regular_stop = rospy.Publisher('regular_stop', Bool, queue_size=10)
+        self.sub_regular_stop = rospy.Subscriber('regular_stop', Bool, self.regular_stop_callback)
 
         self.pos = None
         self.amcl_pos = None
@@ -72,10 +77,25 @@ class RobotController:
         '''
         if msg.data == True:
             self.stop = True
+            # self.reset_pid()
             self.stop_robot()
             print("Emergency Stop Activated")
         if msg.data == False:
             self.stop = False
+            # print("Robot Continues")
+
+    def regular_stop_callback(self, msg):
+        '''
+            Callback function for regular_stop subscriber. Robot stops only if it is not the one
+            publishing to the topic and it is not between the intersection and the goal.
+        '''
+        if msg.data == True and not self.is_crossing_self() and not self.is_between_intersection_and_goal():
+            self.stop = True
+            self.stop_robot()
+            print("Regular Stop Activated by Another Robot")
+        elif msg.data == False:
+            self.stop = False
+            print("Regular Stop Deactivated")
 
     def get_pos(self):
         '''
@@ -83,6 +103,7 @@ class RobotController:
             responding properly.
         '''
         if self.pos is not None:
+            # print('Current Position: {}, {}'.format(self.pos.x, self.pos.y))
             return [self.pos.x, self.pos.y]
         else:
             print('Local Position Not Set')
@@ -106,6 +127,62 @@ class RobotController:
         '''
         self.error_sum = 0
         self.error_prev = 0
+
+    def int_crossing(self):
+        '''
+            Sets bounding square with side length detect around intersection center. Publishes True to
+            regular_stop if priority vehicle is in the intersection.
+        '''
+        pos = self.get_pos()
+        int_msg = Bool()
+        if abs(self.center[0] - pos[0]) < self.detect and abs(self.center[1] - pos[1]) < self.detect:
+            # print('*******IN THE INTERSECTION*********')
+            int_msg.data = True
+        else:
+            int_msg.data = False
+        self.pub_regular_stop.publish(int_msg)
+
+    def is_crossing_self(self):
+        '''
+            Check if the robot is currently publishing a crossing message.
+
+            Returns:
+                bool: True if the robot is currently crossing, False otherwise.
+        '''
+        pos = self.get_pos()
+        return abs(self.center[0] - pos[0]) < self.detect and abs(self.center[1] - pos[1]) < self.detect
+
+    def is_between_intersection_and_goal(self):
+        """
+        Check if the robot is between the center of the intersection and its end goal.
+
+        Returns:
+            bool: True if the robot is between the intersection center and end goal, False otherwise.
+        """
+        robot_pos = self.get_amcl_pos()
+        return self.is_point_between(robot_pos, self.center, self.global_coord[1])
+
+    @staticmethod
+    def is_point_between(point, line_start, line_end):
+        """
+        Check if a point is between two other points on a line.
+
+        Parameters:
+            point (list): The point to check.
+            line_start (list): The start point of the line.
+            line_end (list): The end point of the line.
+
+        Returns:
+            bool: True if the point is between line_start and line_end, False otherwise.
+        """
+        def distance(p1, p2):
+            return math.sqrt((p1[0] - p2[0]) ** 2 + (p1[1] - p2[1]) ** 2)
+
+        total_dist = distance(line_start, line_end)
+        dist_to_start = distance(point, line_start)
+        dist_to_end = distance(point, line_end)
+
+        return dist_to_start + dist_to_end <= total_dist
 
     def drive_adjust(self, pid_output):
         '''
@@ -179,6 +256,7 @@ class RobotController:
                 output = Kp * error + Ki * error_sum + Kd * error_diff
                 
                 self.drive_adjust(output)
+                self.int_crossing()
             else:
                 self.stop_robot()
 
@@ -235,5 +313,3 @@ if __name__ == '__main__':
     controller.stop_robot()
     rospy.sleep(1)
     controller.pid_test(coord[0], coord[1])
-
-
