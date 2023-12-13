@@ -2,6 +2,8 @@
 
 This project aims to simulate an intersection with multiple autonomous vehicles, including regular traffic crossing continuously and priority vehicles like ambulances needing expedited right of way. The goal is to demonstrate safe and efficient coordination, with regular vehicles detecting and yielding to priority ones. Developing this capability has numerous applications, from enabling faster emergency response to improving warehouse efficiency. Key benefits include increased safety, efficiency, and capability for autonomous vehicles and robots performing critical functions in complex environments alongside human drivers.
 
+https://github.com/pi-nav/pi_nav/assets/5233012/cd61d306-6320-4aab-8ded-69a6594a6da0
+
 # Hardware/Software Requirements
 
 - 3 AgileX LIMOs
