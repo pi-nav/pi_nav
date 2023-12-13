@@ -165,11 +165,17 @@ include_directories(
 # )
 
 # ADD FILES TO COMPILE BELOW, e.g.:
-# catkin_install_python(PROGRAMS
-#   scripts/talker.py
-#   scripts/listener.py
-#   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
-# )
+catkin_install_python(PROGRAMS
+  scripts/scenario_1/priority_vehicle_sc1.py
+  scripts/scenario_1/regular_vehicle_2_sc1.py
+  scripts/scenario_1/regular_vehicle_3_sc1.py
+  scripts/scenario_2/regular_vehicle_1_sc2.py
+  scripts/scenario_2/regular_vehicle_2_sc2.py
+  scripts/scenario_3/priority_vehicle_sc3.py
+  scripts/scenario_3/regular_vehicle_2_sc3.py
+  scripts/scenario_3/regular_vehicle_3_sc3.py
+  DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
+)
 
 ## Mark executables for installation
 ## See http://docs.ros.org/melodic/api/catkin/html/howto/format1/building_executables.html
