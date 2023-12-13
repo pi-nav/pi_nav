@@ -85,7 +85,7 @@ export ROS_IP= (if not in configuration file)
 Source in workspace  
 ```
 
-Once setup, just launch appropriate scenario launch files and scripts to start the robot.
+Once setup, just launch appropriate the scenario launch files and scripts to start the robot.
 
 # Testing Scenarios
 
@@ -107,4 +107,3 @@ For testing and analyzing robot behavior, three scenarios were selected to demon
 - First regular vehicle enters intersection first
 - Priority vehicle approaches second, stops to avoid collision
 - Second regular vehicle must stop, yielding to priority vehicle 
-- Combines conditions of Scenario 1 and Scenario 2
